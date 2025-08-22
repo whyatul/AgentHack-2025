@@ -1,17 +1,30 @@
 from typing import List
+import os
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from transformers import pipeline
 from ..utils.logging_setup import get_logger
+
+_ENABLE_FINBERT = os.getenv("ENABLE_FINBERT", "0").lower() in {"1", "true", "yes"}
 
 logger = get_logger(__name__)
 
 _vader = SentimentIntensityAnalyzer()
-_finbert = None
+_finbert = None  # lazy-loaded
 
-try:
-    _finbert = pipeline("text-classification", model="yiyanghkust/finbert-tone", top_k=None)
-except Exception as e:
-    logger.warning(f"FinBERT pipeline load failed: {e}")
+def _load_finbert():  # pragma: no cover - heavy download
+    global _finbert
+    if _finbert is not None:
+        return _finbert
+    if not _ENABLE_FINBERT:
+        logger.info("FinBERT disabled (set ENABLE_FINBERT=1 to enable). Returning neutral scores.")
+        return None
+    try:
+        from transformers import pipeline  # local import to avoid import cost if disabled
+        logger.info("Loading FinBERT sentiment model ... this may take a while the first time.")
+        _finbert = pipeline("text-classification", model="yiyanghkust/finbert-tone", top_k=None)
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"FinBERT pipeline load failed: {e}")
+        _finbert = None
+    return _finbert
 
 
 def vader_compound(text: str) -> float:
@@ -19,9 +32,10 @@ def vader_compound(text: str) -> float:
 
 
 def finbert_scores(texts: List[str]) -> List[float]:
-    if _finbert is None:
+    fb = _load_finbert()
+    if fb is None:
         return [0.0 for _ in texts]
-    outputs = _finbert(texts)
+    outputs = fb(texts)
     scores = []
     for out in outputs:
         # out is a list of dicts with label & score

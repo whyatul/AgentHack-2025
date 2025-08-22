@@ -5,6 +5,7 @@ praw
 tweepy
 requests
 pydantic
+pydantic-settings
 vaderSentiment
 transformers
 scikit-learn
