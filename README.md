@@ -47,6 +47,49 @@ uvicorn src.ai_meme_stock_predictor.web.app:app --reload
 ```
 Visit: http://localhost:8000/health
 
+### Quickstart (Detailed)
+1. Clone repo & enter directory.
+2. Create & activate virtualenv (see above).
+3. Copy `.env` template and fill any keys you have:
+  ```bash
+  cat > .env <<'EOF'
+  ALPHAVANTAGE_API_KEY=
+  REDDIT_CLIENT_ID=
+  REDDIT_CLIENT_SECRET=
+  REDDIT_USER_AGENT=meme-stock-agent
+  TWITTER_BEARER_TOKEN=
+  PORTIA_API_KEY=
+  TELEGRAM_BOT_TOKEN=
+  ENV=dev
+  # Optional heavy model toggle (FinBERT). Leave 0 for faster startup.
+  ENABLE_FINBERT=0
+  EOF
+  ```
+4. (Optional) Enable FinBERT sentiment model (downloads ~400MB first run):
+  ```bash
+  ENABLE_FINBERT=1 uvicorn src.ai_meme_stock_predictor.web.app:app --reload
+  ```
+  If disabled (`0` / unset) FinBERT scores return neutral and startup is instant.
+5. Basic health check:
+  ```bash
+  curl http://127.0.0.1:8000/health
+  ```
+6. Query the API (example ticker prompt):
+  ```bash
+  curl -X POST http://127.0.0.1:8000/query \
+    -H 'Content-Type: application/json' \
+    -d '{"conversation_id":"demo1","text":"TSLA memes?"}'
+  ```
+7. Run tests:
+  ```bash
+  pytest -q
+  ```
+
+### Common Issues
+- Module import error for `src`: ensure you run commands from repo root & virtualenv active.
+- Slow startup: FinBERT model downloading; set `ENABLE_FINBERT=0` to skip.
+- Missing data (warnings about Reddit/Twitter/AlphaVantage): supply keys in `.env` to enable those sources.
+
 ### Telegram Bot
 ```
 python -m src.ai_meme_stock_predictor.web.telegram_bot

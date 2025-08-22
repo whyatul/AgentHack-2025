@@ -1,6 +1,12 @@
-import os
 from dotenv import load_dotenv
-from pydantic import BaseSettings, Field
+from pydantic import Field
+
+# Pydantic v2 moved BaseSettings to the pydantic-settings package.
+# Provide a backward-compatible import fallback in case someone installs pydantic<2
+try:  # pragma: no cover - simple import guard
+    from pydantic_settings import BaseSettings  # type: ignore
+except ImportError:  # pragma: no cover
+    from pydantic import BaseSettings  # type: ignore
 
 load_dotenv()
 
