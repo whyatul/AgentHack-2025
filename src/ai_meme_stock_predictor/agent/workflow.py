@@ -26,10 +26,12 @@ class MemeStockWorkflow:
         pred = self.predictor.predict(feats)
         humor = random.choice(HUMOR_TEMPLATES).format(ticker=ticker.upper(), **pred)
         explanation = EXPLANATION_TEMPLATE.format(**feats)
+        history = self.market.history(ticker, days=30)
         return {
             'ticker': ticker.upper(),
             'features': feats,
             'prediction': pred,
             'message': humor,
-            'explanation': explanation
+            'explanation': explanation,
+            'history': history
         }

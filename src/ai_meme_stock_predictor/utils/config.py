@@ -17,9 +17,14 @@ class Settings(BaseSettings):
     reddit_user_agent: str = Field(default="meme-stock-agent", env="REDDIT_USER_AGENT")
     twitter_bearer_token: str = Field(default="", env="TWITTER_BEARER_TOKEN")
     portia_api_key: str = Field(default="", env="PORTIA_API_KEY")
+    telegram_bot_token: str = Field(default="", env="TELEGRAM_BOT_TOKEN")
     env: str = Field(default="dev", env="ENV")
 
     class Config:
         case_sensitive = False
 
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get the application settings instance."""
+    return settings

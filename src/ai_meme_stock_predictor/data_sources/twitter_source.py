@@ -13,28 +13,47 @@ class TwitterSource:
         if not self.bearer:
             logger.warning("Twitter bearer token missing; TwitterSource disabled")
 
-    def fetch_mentions(self, ticker: str, limit: int = 50) -> List[Dict]:
+    def fetch_mentions(self, ticker: str, limit: int = 10) -> List[Dict]:
         if not self.bearer:
+            logger.warning("Twitter bearer token missing")
             return []
+        
         headers = {"Authorization": f"Bearer {self.bearer}"}
         params = {
-            "query": f"{ticker} (stock OR shares OR tendies OR moon OR 🚀)",
+            "query": f"({ticker} OR ${ticker}) -is:retweet lang:en",
             "max_results": min(limit, 100),
-            "tweet.fields": "created_at,public_metrics,lang",
+            "tweet.fields": "created_at,author_id,public_metrics"
         }
-        r = requests.get(TWITTER_SEARCH_URL, headers=headers, params=params, timeout=10)
-        if r.status_code != 200:
-            logger.error(f"Twitter API error {r.status_code}: {r.text}")
+        
+        try:
+            r = requests.get(TWITTER_SEARCH_URL, headers=headers, params=params, timeout=10)
+            if r.status_code == 429:
+                logger.warning(f"Twitter API rate limit reached for {ticker} - returning empty list")
+                return []
+            elif r.status_code == 403:
+                logger.warning(f"Twitter API access forbidden for {ticker} - check credentials")
+                return []
+            elif r.status_code != 200:
+                logger.error(f"Twitter API error {r.status_code} for {ticker}: {r.text[:200]}")
+                return []
+                
+            data = r.json().get('data', [])
+            results = []
+            for tweet in data:
+                results.append({
+                    'text': tweet.get('text', ''),
+                    'created_at': tweet.get('created_at', ''),
+                    'author_id': tweet.get('author_id', ''),
+                    'retweets': tweet.get('public_metrics', {}).get('retweet_count', 0),
+                    'likes': tweet.get('public_metrics', {}).get('like_count', 0)
+                })
+            
+            logger.info(f"Fetched {len(results)} tweets for {ticker}")
+            return results
+            
+        except requests.exceptions.Timeout:
+            logger.warning(f"Twitter API timeout for {ticker}")
             return []
-        data = r.json().get("data", [])
-        results = []
-        for t in data:
-            results.append({
-                "id": t["id"],
-                "text": t.get("text", ""),
-                "created_at": t.get("created_at"),
-                "retweet_count": t.get("public_metrics", {}).get("retweet_count"),
-                "like_count": t.get("public_metrics", {}).get("like_count"),
-            })
-        logger.debug(f"Twitter fetched {len(results)} tweets for {ticker}")
-        return results
+        except Exception as e:
+            logger.error(f"Twitter API error for {ticker}: {e}")
+            return []
